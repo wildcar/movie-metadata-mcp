@@ -21,7 +21,7 @@ _NOT_IMPLEMENTED = ToolError(
 
 
 async def search_movie(title: str, year: int | None = None) -> SearchMovieResponse:
-    """Search candidate movies across TMDB, OMDb, and kinopoisk.dev.
+    """Search candidate movies across TMDB, OMDb, and poiskkino.dev.
 
     Args:
         title: Free-text title to search for.

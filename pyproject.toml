@@ -1,7 +1,7 @@
 [project]
 name = "movie-metadata-mcp"
 version = "0.1.0"
-description = "MCP server that aggregates movie metadata from TMDB, OMDb, and kinopoisk.dev."
+description = "MCP server that aggregates movie metadata from TMDB, OMDb, and poiskkino.dev."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

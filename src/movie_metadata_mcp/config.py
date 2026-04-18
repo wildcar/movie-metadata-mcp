@@ -33,9 +33,9 @@ class Settings(BaseSettings):
         default=None,
         description="OMDb API key. Obtain at https://www.omdbapi.com/apikey.aspx",
     )
-    kinopoisk_dev_token: str | None = Field(
+    poiskkino_dev_token: str | None = Field(
         default=None,
-        description="kinopoisk.dev API token. Obtain at https://kinopoisk.dev (Telegram bot @kinopoiskdev_bot)",
+        description="poiskkino.dev API token. Obtain at https://poiskkino.dev (Telegram bot @poiskkinodev_bot). Formerly kinopoisk.dev.",
     )
 
     # Cache --------------------------------------------------------------

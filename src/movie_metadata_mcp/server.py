@@ -54,7 +54,7 @@ def build_server() -> FastMCP:
     mcp = FastMCP(
         name="movie-metadata-mcp",
         instructions=(
-            "Aggregates movie metadata from TMDB, OMDb, and kinopoisk.dev. "
+            "Aggregates movie metadata from TMDB, OMDb, and poiskkino.dev. "
             "Use `search_movie` to resolve a free-text query to IMDb IDs, then "
             "`get_movie_details` to fetch full metadata. IMDb IDs returned here "
             "are the cross-server correlation key."
@@ -65,7 +65,7 @@ def build_server() -> FastMCP:
         name="search_movie",
         description=(
             "Search candidate movies by title (optionally filtered by year). "
-            "Returns a merged list across TMDB/OMDb/kinopoisk.dev."
+            "Returns a merged list across TMDB/OMDb/poiskkino.dev."
         ),
     )(search_movie)
 

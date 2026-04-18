@@ -94,7 +94,7 @@ class MovieDetails(_Base):
     cast: list[str] = Field(default_factory=list, description="Main cast, ordered by billing.")
     overview: str | None = Field(None, description="Plot summary (language depends on source).")
     overview_ru: str | None = Field(
-        None, description="Russian plot summary, sourced from kinopoisk.dev when available."
+        None, description="Russian plot summary, sourced from poiskkino.dev when available."
     )
     poster_url: str | None = None
     ratings: list[Rating] = Field(default_factory=list)

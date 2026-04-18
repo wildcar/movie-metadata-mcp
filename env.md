@@ -17,7 +17,7 @@ install paths, GitHub auth) live in `../env.md`.
 - Copy `.env.example` to `.env` and fill in real credentials; `.env` is
   gitignored. `pydantic-settings` reads it automatically.
 - Three credentials are required for meaningful integration tests:
-  `TMDB_API_TOKEN`, `OMDB_API_KEY`, `KINOPOISK_DEV_TOKEN`. See README for
+  `TMDB_API_TOKEN`, `OMDB_API_KEY`, `POISKKINO_DEV_TOKEN`. See README for
   obtain-links.
 
 ## Running
@@ -34,7 +34,7 @@ npx @modelcontextprotocol/inspector uv run movie-metadata-mcp
 
 - `uv run pytest` runs unit tests only (integration tests are gated by the
   `integration` pytest marker).
-- `uv run pytest -m integration` hits real TMDB / OMDb / kinopoisk.dev and
+- `uv run pytest -m integration` hits real TMDB / OMDb / poiskkino.dev and
   requires credentials in `.env`. Keep this out of CI.
 
 ## Cache

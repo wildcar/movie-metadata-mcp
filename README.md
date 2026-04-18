@@ -1,7 +1,8 @@
 # movie-metadata-mcp
 
 MCP (Model Context Protocol) server that aggregates movie metadata from
-**TMDB**, **OMDb**, and **kinopoisk.dev** into a unified response. It is the
+**TMDB**, **OMDb**, and **poiskkino.dev** (formerly kinopoisk.dev) into a
+unified response. It is the
 first of five servers in the [`movie_handler`](../) system and the only one
 that resolves free-text titles to an **IMDb ID** — the cross-server
 correlation key used by every downstream server (trailer, torrent search,
@@ -34,7 +35,7 @@ All configuration is read from env vars / `.env`. Copy `.env.example` →
 |---|---|---|
 | `TMDB_API_TOKEN` | yes | TMDB API Read Access Token (v4). Posters, descriptions, IMDb IDs, trailers metadata. |
 | `OMDB_API_KEY` | yes | OMDb — IMDb rating, Metacritic. |
-| `KINOPOISK_DEV_TOKEN` | yes | kinopoisk.dev — КП rating, Russian description. |
+| `POISKKINO_DEV_TOKEN` | yes | poiskkino.dev — КП rating, Russian description. |
 | `CACHE_PATH` | no | SQLite path. Default `.cache/movie_metadata.sqlite`. |
 | `CACHE_TTL_SEARCH_SECONDS` | no | Default `3600` (1 h). |
 | `CACHE_TTL_DETAILS_SECONDS` | no | Default `86400` (24 h). |
@@ -49,9 +50,11 @@ All configuration is read from env vars / `.env`. Copy `.env.example` →
   v4 token this server expects; do **not** use the short v3 API key.
 - **OMDb** → <https://www.omdbapi.com/apikey.aspx>. Pick the FREE tier
   (1000 req/day), confirm via email — the key arrives in that email.
-- **kinopoisk.dev** → Telegram bot [@kinopoiskdev_bot](https://t.me/kinopoiskdev_bot).
+- **poiskkino.dev** → Telegram bot [@poiskkinodev_bot](https://t.me/poiskkinodev_bot)
+  (the service rebranded from `kinopoisk.dev` — the old bot is discontinued).
   Send `/api` to request a token; the free tier (200 req/day) is plenty for
-  development. Docs at <https://kinopoisk.dev/documentation>.
+  development. Site <https://poiskkino.dev>, API `https://api.poiskkino.dev`,
+  docs <https://poiskkino.dev/documentation>.
 
 ## Local development
 
@@ -99,7 +102,7 @@ Add this block to Claude Desktop's `claude_desktop_config.json`
       "env": {
         "TMDB_API_TOKEN": "...",
         "OMDB_API_KEY": "...",
-        "KINOPOISK_DEV_TOKEN": "..."
+        "POISKKINO_DEV_TOKEN": "..."
       }
     }
   }

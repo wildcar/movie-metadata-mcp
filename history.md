@@ -7,6 +7,13 @@ starts. Cross-repo context lives in the workspace root's `history.md`.
 
 ## 2026-04-18
 
+### Rebrand `kinopoisk.dev` → `poiskkino.dev`
+- Provider changed its brand. New endpoints: site `https://poiskkino.dev`, API `https://api.poiskkino.dev`, Telegram bot `@poiskkinodev_bot`, docs `poiskkino.dev/documentation`.
+- Renamed env var `KINOPOISK_DEV_TOKEN` → `POISKKINO_DEV_TOKEN`; Pydantic field `Settings.kinopoisk_dev_token` → `poiskkino_dev_token`.
+- Updated `README.md`, `.env.example`, `pyproject.toml` description, server/tool descriptions, `models.py` docstring, per-repo `env.md`.
+- Rating source slug in the `Rating` model stays `"kinopoisk"` — the rating is from the Кинопоиск website, not the API aggregator; the slug tracks the rating source, not the transport.
+- Re-verified CI gates locally (`ruff`, `ruff format`, `mypy --strict`, `pytest`). Commit + push.
+
 ### Initial scaffold (Step A)
 - Bootstrapped with `uv init --package --lib --python 3.12`; rewrote
   `pyproject.toml` with the runtime and dev dependency sets agreed in
