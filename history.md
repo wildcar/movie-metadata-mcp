@@ -7,6 +7,47 @@ starts. Cross-repo context lives in the workspace root's `history.md`.
 
 ## 2026-04-18
 
+### Step B — real aggregation logic
+- Implement `cache.py`: `SQLiteCache` backed by `aiosqlite`, a single table
+  keyed by the tool name + canonical-JSON args, with per-entry TTL and lazy
+  expiration on read.
+- Implement upstream clients under `clients/`:
+  - `tmdb.py` — TMDB v3 API with v4 Bearer auth; `search_movie` +
+    `get_external_ids` + `find_by_imdb` + `get_details`.
+  - `omdb.py` — OMDb `?i={imdb_id}` lookup; parses `Response` / `Error`
+    gracefully.
+  - `poiskkino.py` — `https://api.poiskkino.dev/v1.4/movie?externalId.imdb=...&limit=1`
+    with `X-API-KEY` header; returns the first `docs[]` entry.
+- Add `context.py` with an `AppContext` dataclass and
+  `build_app_context()` async context manager that owns the three
+  `httpx.AsyncClient`s and the cache.
+- Rewrite `tools.py`:
+  - `search_movie`: TMDB text search → for the top 5 candidates fetch
+    external ids in parallel to populate `imdb_id`; cache keyed by
+    `(title, year)` with the search TTL.
+  - `get_movie_details`: `asyncio.gather(TMDB find+details, OMDb, Poiskkino)`
+    with `return_exceptions=True`. Merge fields; downed providers are
+    logged and appended to `sources_failed` rather than failing the call.
+- Switch `server.py` to an async `amain()` using the closure pattern:
+  `build_context()` is awaited before `run_stdio_async()`, and tool
+  handlers are thin wrappers that close over the context.
+- Unit tests via `respx` per client, plus a tools test with in-memory
+  fake clients; cache tests cover set / get / expiration / eviction.
+- Integration tests (`@pytest.mark.integration`) hit the real APIs using
+  credentials from `.env`; they are skipped when any of the three tokens
+  is missing so CI stays offline-safe.
+- **poiskkino title-fallback**: integration testing against real data
+  surfaced that poiskkino.dev has genuine gaps in IMDb-id mapping — e.g.
+  "Dune" (2021) exists in their DB (KP id 409424) but its record has no
+  `externalId.imdb` populated, so the primary filter query returns empty
+  for a non-trivial share of titles. Added ``PoiskkinoClient.find_by_title``
+  (``/v1.4/movie/search?query=``) and, in ``get_movie_details_impl``, a
+  second-chance lookup: if the IMDb-based call returns nothing but TMDB
+  supplied a title + year, we do one additional search request and pick
+  the year-matching candidate. Confirmed no tier-level endpoint
+  restrictions on the 200-req/day free plan — this is a data coverage
+  issue, not an auth one.
+
 ### Rebrand `kinopoisk.dev` → `poiskkino.dev`
 - Provider changed its brand. New endpoints: site `https://poiskkino.dev`, API `https://api.poiskkino.dev`, Telegram bot `@poiskkinodev_bot`, docs `poiskkino.dev/documentation`.
 - Renamed env var `KINOPOISK_DEV_TOKEN` → `POISKKINO_DEV_TOKEN`; Pydantic field `Settings.kinopoisk_dev_token` → `poiskkino_dev_token`.
