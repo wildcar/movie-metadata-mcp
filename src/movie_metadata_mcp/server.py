@@ -49,8 +49,14 @@ def _configure_logging() -> None:
 def build_server(ctx: AppContext) -> FastMCP:
     """Construct a ``FastMCP`` with both tools bound to the supplied context."""
 
+    # Host / port for the HTTP+SSE and streamable-HTTP transports are read
+    # directly from env here: relying on FastMCP's own FASTMCP_* env var
+    # reading proved unreliable across SDK versions, so we pass them
+    # explicitly to the constructor.
     mcp = FastMCP(
         name="movie-metadata-mcp",
+        host=os.environ.get("MCP_HTTP_HOST", "127.0.0.1"),
+        port=int(os.environ.get("MCP_HTTP_PORT", "8765")),
         instructions=(
             "Aggregates movie metadata from TMDB, OMDb, and poiskkino.dev. "
             "Use `search_movie` to resolve a free-text query to IMDb IDs, then "
