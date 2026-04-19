@@ -18,7 +18,10 @@ import httpx
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
-DEFAULT_LANGUAGE = "en-US"
+# The bot serves a Russian UI; ask TMDB for ru-RU metadata upfront. Original
+# titles remain available on each response via ``original_title`` /
+# ``original_name`` so we can show both to the user.
+DEFAULT_LANGUAGE = "ru-RU"
 
 
 class TMDBError(Exception):
@@ -77,29 +80,92 @@ class TMDBClient:
             raise TMDBError("TMDB search: 'results' missing or malformed")
         return results[:limit]
 
+    async def search_tv(
+        self, title: str, year: int | None = None, *, limit: int = 10
+    ) -> list[dict[str, Any]]:
+        """Search TV series by title. Same shape as ``search_movie`` but hits ``/search/tv``.
+
+        The raw TMDB TV item uses ``name``/``original_name``/``first_air_date``;
+        the caller is responsible for normalising to ``title``/``original_title``/``year``.
+        """
+
+        params: dict[str, Any] = {
+            "query": title,
+            "language": DEFAULT_LANGUAGE,
+            "include_adult": "false",
+            "page": 1,
+        }
+        if year is not None:
+            params["first_air_date_year"] = year
+
+        data = await self._get_json("/search/tv", params=params)
+        results = data.get("results", [])
+        if not isinstance(results, list):
+            raise TMDBError("TMDB TV search: 'results' missing or malformed")
+        return results[:limit]
+
     async def get_external_ids(self, tmdb_id: int) -> dict[str, Any]:
         """Fetch external ids (IMDb, etc.) for a TMDB movie."""
 
         return await self._get_json(f"/movie/{tmdb_id}/external_ids")
 
-    async def find_by_imdb(self, imdb_id: str) -> dict[str, Any] | None:
-        """Reverse lookup by IMDb id. Returns the first matching TMDB movie or ``None``."""
+    async def get_tv_external_ids(self, tv_id: int) -> dict[str, Any]:
+        """Fetch external ids for a TMDB TV series."""
 
-        data = await self._get_json(
-            f"/find/{imdb_id}",
-            params={"external_source": "imdb_id", "language": DEFAULT_LANGUAGE},
-        )
+        return await self._get_json(f"/tv/{tv_id}/external_ids")
+
+    async def find_by_imdb(self, imdb_id: str) -> dict[str, Any] | None:
+        """Reverse lookup by IMDb id against movies only.
+
+        Kept for callers that want a movie-specific answer. For a unified
+        lookup across movies **and** TV series, use :meth:`find_any_by_imdb`.
+        """
+
+        data = await self._find_raw(imdb_id)
         movies = data.get("movie_results", [])
         if isinstance(movies, list) and movies:
             first: dict[str, Any] = movies[0]
             return first
         return None
 
+    async def find_any_by_imdb(
+        self, imdb_id: str
+    ) -> tuple[str, dict[str, Any]] | None:
+        """Reverse lookup across both movie and TV endpoints.
+
+        Returns ``("movie" | "series", tmdb_row)`` for the first match, or
+        ``None`` if neither list is populated. One HTTP round-trip — ``/find``
+        returns all categories at once.
+        """
+
+        data = await self._find_raw(imdb_id)
+        movies = data.get("movie_results", [])
+        if isinstance(movies, list) and movies:
+            return "movie", movies[0]
+        tv = data.get("tv_results", [])
+        if isinstance(tv, list) and tv:
+            return "series", tv[0]
+        return None
+
+    async def _find_raw(self, imdb_id: str) -> dict[str, Any]:
+        return await self._get_json(
+            f"/find/{imdb_id}",
+            params={"external_source": "imdb_id", "language": DEFAULT_LANGUAGE},
+        )
+
     async def get_details(self, tmdb_id: int) -> dict[str, Any]:
-        """Fetch full details + top-billed cast + director in one request."""
+        """Fetch full movie details + top-billed cast + director in one request."""
 
         return await self._get_json(
             f"/movie/{tmdb_id}",
+            params={"language": DEFAULT_LANGUAGE, "append_to_response": "credits"},
+        )
+
+    async def get_tv_details(self, tv_id: int) -> dict[str, Any]:
+        """Fetch full TV-series details + credits in one request."""
+
+        return await self._get_json(
+            f"/tv/{tv_id}",
             params={"language": DEFAULT_LANGUAGE, "append_to_response": "credits"},
         )
 

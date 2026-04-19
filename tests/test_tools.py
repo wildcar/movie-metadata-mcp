@@ -23,6 +23,9 @@ from movie_metadata_mcp.tools import get_movie_details_impl, search_movie_impl
 async def test_search_movie_populates_imdb_ids(
     app_ctx: AppContext, respx_mock: respx.MockRouter
 ) -> None:
+    respx_mock.get(f"{TMDB_BASE_URL}/search/tv").mock(
+        return_value=httpx.Response(200, json={"results": []})
+    )
     respx_mock.get(f"{TMDB_BASE_URL}/search/movie").mock(
         return_value=httpx.Response(
             200,
@@ -62,6 +65,9 @@ async def test_search_movie_populates_imdb_ids(
 async def test_search_movie_uses_cache_on_second_call(
     app_ctx: AppContext, respx_mock: respx.MockRouter
 ) -> None:
+    respx_mock.get(f"{TMDB_BASE_URL}/search/tv").mock(
+        return_value=httpx.Response(200, json={"results": []})
+    )
     respx_mock.get(f"{TMDB_BASE_URL}/search/movie").mock(
         return_value=httpx.Response(200, json={"results": [{"id": 1, "title": "X"}]})
     )
@@ -72,8 +78,9 @@ async def test_search_movie_uses_cache_on_second_call(
     await search_movie_impl(app_ctx, "X", year=None)
     await search_movie_impl(app_ctx, "X", year=None)
 
-    # Second call should hit the cache; respx call count stays at 2 (search + ext_ids).
-    assert len(respx_mock.calls) == 2
+    # Second call should hit the cache; respx call count stays at 3
+    # (/search/movie + /search/tv + /movie/1/external_ids).
+    assert len(respx_mock.calls) == 3
 
 
 async def test_search_movie_rejects_empty_title(app_ctx: AppContext) -> None:
@@ -85,6 +92,9 @@ async def test_search_movie_rejects_empty_title(app_ctx: AppContext) -> None:
 async def test_search_movie_upstream_error_degrades(
     app_ctx: AppContext, respx_mock: respx.MockRouter
 ) -> None:
+    respx_mock.get(f"{TMDB_BASE_URL}/search/tv").mock(
+        return_value=httpx.Response(200, json={"results": []})
+    )
     respx_mock.get(f"{TMDB_BASE_URL}/search/movie").mock(
         return_value=httpx.Response(503, text="down")
     )

@@ -7,7 +7,11 @@ into these types.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+TitleKind = Literal["movie", "series"]
 
 # ---------------------------------------------------------------------------
 # Common
@@ -43,14 +47,20 @@ class MovieSearchResult(_Base):
     ``get_movie_details`` with the IMDb ID.
     """
 
+    kind: TitleKind = Field(
+        "movie", description="Whether this candidate is a feature film or a TV series."
+    )
     imdb_id: str | None = Field(
         None, description="IMDb identifier (e.g. tt1375666). May be None if unknown."
     )
     tmdb_id: int | None = Field(None, description="TMDB numeric identifier, if available.")
-    title: str = Field(..., description="Original or localized title as reported by the source.")
+    title: str = Field(..., description="Localized title (ru-RU) as reported by TMDB.")
+    original_title: str | None = Field(
+        None, description="Original-language title; useful for disambiguation in the UI."
+    )
     year: int | None = Field(None, description="Release year, if known.")
     poster_url: str | None = Field(None, description="Absolute URL of a poster image.")
-    overview: str | None = Field(None, description="Short plot summary.")
+    overview: str | None = Field(None, description="Short plot summary (ru-RU when available).")
 
 
 class SearchMovieResponse(_Base):
@@ -84,6 +94,7 @@ class MovieDetails(_Base):
     """Full metadata returned by ``get_movie_details``."""
 
     imdb_id: str = Field(..., description="IMDb identifier — cross-server correlation key.")
+    kind: TitleKind = Field("movie", description="Feature film or TV series.")
     tmdb_id: int | None = None
     title: str
     original_title: str | None = None

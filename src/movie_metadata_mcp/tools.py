@@ -29,6 +29,7 @@ from .models import (
     MovieSearchResult,
     Rating,
     SearchMovieResponse,
+    TitleKind,
     ToolError,
 )
 
@@ -73,7 +74,10 @@ async def search_movie_impl(
         )
 
     try:
-        raw_results = await ctx.tmdb.search_movie(title, year=year, limit=_SEARCH_CANDIDATE_LIMIT)
+        movies_raw, series_raw = await asyncio.gather(
+            ctx.tmdb.search_movie(title, year=year, limit=_SEARCH_CANDIDATE_LIMIT),
+            ctx.tmdb.search_tv(title, year=year, limit=_SEARCH_CANDIDATE_LIMIT),
+        )
     except Exception as exc:
         log.warning("tmdb.search_failed", error=str(exc))
         return SearchMovieResponse(
@@ -81,23 +85,16 @@ async def search_movie_impl(
             error=ToolError(code="upstream_error", message=f"TMDB search failed: {exc}"),
         )
 
-    imdb_ids = await _resolve_imdb_ids(ctx, [r.get("id") for r in raw_results])
+    imdb_movie, imdb_tv = await asyncio.gather(
+        _resolve_imdb_ids(ctx, [r.get("id") for r in movies_raw], kind="movie"),
+        _resolve_imdb_ids(ctx, [r.get("id") for r in series_raw], kind="series"),
+    )
 
     candidates: list[MovieSearchResult] = []
-    for raw in raw_results:
-        tmdb_id = raw.get("id")
-        candidates.append(
-            MovieSearchResult(
-                imdb_id=imdb_ids.get(tmdb_id) if isinstance(tmdb_id, int) else None,
-                tmdb_id=tmdb_id if isinstance(tmdb_id, int) else None,
-                title=raw.get("title") or raw.get("original_title") or "",
-                year=_parse_year(raw.get("release_date")),
-                poster_url=ctx.tmdb.poster_url(raw.get("poster_path"))
-                if ctx.tmdb is not None
-                else None,
-                overview=raw.get("overview") or None,
-            )
-        )
+    for raw in movies_raw:
+        candidates.append(_to_search_result(ctx, raw, kind="movie", imdb_map=imdb_movie))
+    for raw in series_raw:
+        candidates.append(_to_search_result(ctx, raw, kind="series", imdb_map=imdb_tv))
 
     response = SearchMovieResponse(results=candidates)
     await ctx.cache.set(
@@ -106,8 +103,14 @@ async def search_movie_impl(
     return response
 
 
-async def _resolve_imdb_ids(ctx: AppContext, tmdb_ids: list[Any]) -> dict[int, str | None]:
-    """Fan out ``/movie/{id}/external_ids`` for each TMDB id; swallow failures."""
+async def _resolve_imdb_ids(
+    ctx: AppContext, tmdb_ids: list[Any], *, kind: TitleKind
+) -> dict[int, str | None]:
+    """Fan out the ``external_ids`` endpoint (movie or tv) for each TMDB id.
+
+    Network failures are swallowed and the affected id maps to ``None`` so the
+    list rendering can still show the title (it just won't be actionable).
+    """
 
     if ctx.tmdb is None:
         return {}
@@ -115,17 +118,60 @@ async def _resolve_imdb_ids(ctx: AppContext, tmdb_ids: list[Any]) -> dict[int, s
     if not valid_ids:
         return {}
 
+    fetch = (
+        ctx.tmdb.get_external_ids if kind == "movie" else ctx.tmdb.get_tv_external_ids
+    )
+
     async def _one(tmdb_id: int) -> tuple[int, str | None]:
         try:
-            data = await ctx.tmdb.get_external_ids(tmdb_id) if ctx.tmdb else {}
+            data = await fetch(tmdb_id)
         except Exception as exc:
-            log.info("tmdb.external_ids_failed", tmdb_id=tmdb_id, error=str(exc))
+            log.info(
+                "tmdb.external_ids_failed", kind=kind, tmdb_id=tmdb_id, error=str(exc)
+            )
             return tmdb_id, None
         imdb = data.get("imdb_id")
         return tmdb_id, imdb if isinstance(imdb, str) and imdb else None
 
     pairs = await asyncio.gather(*(_one(i) for i in valid_ids))
     return dict(pairs)
+
+
+def _to_search_result(
+    ctx: AppContext,
+    raw: dict[str, Any],
+    *,
+    kind: TitleKind,
+    imdb_map: dict[int, str | None],
+) -> MovieSearchResult:
+    """Normalise a raw TMDB movie-or-tv row into :class:`MovieSearchResult`."""
+
+    tmdb_id = raw.get("id") if isinstance(raw.get("id"), int) else None
+
+    if kind == "movie":
+        localized = raw.get("title")
+        original = raw.get("original_title")
+        year = _parse_year(raw.get("release_date"))
+    else:
+        localized = raw.get("name")
+        original = raw.get("original_name")
+        year = _parse_year(raw.get("first_air_date"))
+
+    title = localized or original or ""
+    # Suppress ``original_title`` when it duplicates the localized title — no
+    # point rendering "Дюна (Дюна)" in the UI.
+    original_title = original if original and original != title else None
+
+    return MovieSearchResult(
+        kind=kind,
+        imdb_id=imdb_map.get(tmdb_id) if tmdb_id is not None else None,
+        tmdb_id=tmdb_id,
+        title=title,
+        original_title=original_title,
+        year=year,
+        poster_url=ctx.tmdb.poster_url(raw.get("poster_path")) if ctx.tmdb else None,
+        overview=raw.get("overview") or None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -174,8 +220,15 @@ async def get_movie_details_impl(ctx: AppContext, imdb_id: str) -> GetMovieDetai
     # so ``externalId.imdb=...`` returns empty. When TMDB gave us a title +
     # year we try a text search before giving up on Russian content.
     if pk is None and ctx.poiskkino is not None and tmdb is not None:
-        fallback_title = tmdb.get("title") or tmdb.get("original_title")
-        fallback_year = _parse_year(tmdb.get("release_date"))
+        is_tv = tmdb.get("_kind") == "series"
+        fallback_title = (
+            (tmdb.get("name") or tmdb.get("original_name"))
+            if is_tv
+            else (tmdb.get("title") or tmdb.get("original_title"))
+        )
+        fallback_year = _parse_year(
+            tmdb.get("first_air_date") if is_tv else tmdb.get("release_date")
+        )
         if isinstance(fallback_title, str) and fallback_title:
             try:
                 pk = await ctx.poiskkino.find_by_title(fallback_title, fallback_year)
@@ -211,16 +264,30 @@ _FAILED: Any = object()
 
 
 async def _fetch_tmdb(ctx: AppContext, imdb_id: str) -> dict[str, Any] | None | Any:
+    """Resolve IMDb id through TMDB, dispatching between movie and TV endpoints.
+
+    On success returns the details dict **with an added ``_kind`` key** so the
+    merge step knows which field layout to expect (movie vs tv).
+    """
+
     if ctx.tmdb is None:
         return _FAILED
     try:
-        found = await ctx.tmdb.find_by_imdb(imdb_id)
+        found = await ctx.tmdb.find_any_by_imdb(imdb_id)
         if found is None:
             return None
-        tmdb_id = found.get("id")
+        kind, row = found
+        kind_typed: TitleKind = "series" if kind == "series" else "movie"
+        tmdb_id = row.get("id")
         if not isinstance(tmdb_id, int):
             return None
-        return await ctx.tmdb.get_details(tmdb_id)
+        details = (
+            await ctx.tmdb.get_details(tmdb_id)
+            if kind_typed == "movie"
+            else await ctx.tmdb.get_tv_details(tmdb_id)
+        )
+        details["_kind"] = kind_typed
+        return details
     except Exception as exc:
         log.warning("tmdb.details_failed", imdb_id=imdb_id, error=str(exc))
         return _FAILED
@@ -265,6 +332,7 @@ def _merge_details(
     """
 
     tmdb_id: int | None = None
+    kind: TitleKind = "movie"
     title = ""
     original_title: str | None = None
     year: int | None = None
@@ -276,19 +344,36 @@ def _merge_details(
     poster_url: str | None = None
 
     if tmdb is not None:
+        kind = "series" if tmdb.get("_kind") == "series" else "movie"
         tmdb_id = tmdb.get("id") if isinstance(tmdb.get("id"), int) else None
-        title = tmdb.get("title") or tmdb.get("original_title") or ""
-        original_title = tmdb.get("original_title") or None
-        year = _parse_year(tmdb.get("release_date"))
-        if isinstance(tmdb.get("runtime"), int):
-            runtime = tmdb["runtime"]
+        if kind == "movie":
+            title = tmdb.get("title") or tmdb.get("original_title") or ""
+            original_title = tmdb.get("original_title") or None
+            year = _parse_year(tmdb.get("release_date"))
+            if isinstance(tmdb.get("runtime"), int):
+                runtime = tmdb["runtime"]
+            credits_data = tmdb.get("credits") or {}
+            directors = [
+                c.get("name", "")
+                for c in credits_data.get("crew") or []
+                if c.get("job") == "Director" and c.get("name")
+            ]
+        else:
+            title = tmdb.get("name") or tmdb.get("original_name") or ""
+            original_title = tmdb.get("original_name") or None
+            year = _parse_year(tmdb.get("first_air_date"))
+            runtimes = tmdb.get("episode_run_time") or []
+            if isinstance(runtimes, list) and runtimes and isinstance(runtimes[0], int):
+                runtime = runtimes[0]
+            directors = [
+                c.get("name", "")
+                for c in tmdb.get("created_by") or []
+                if c.get("name")
+            ]
+            credits_data = tmdb.get("credits") or {}
+        if original_title and original_title == title:
+            original_title = None
         genres = [g["name"] for g in tmdb.get("genres") or [] if g.get("name")]
-        credits_data = tmdb.get("credits") or {}
-        directors = [
-            c.get("name", "")
-            for c in credits_data.get("crew") or []
-            if c.get("job") == "Director" and c.get("name")
-        ]
         cast = [c.get("name", "") for c in (credits_data.get("cast") or [])[:10] if c.get("name")]
         overview = tmdb.get("overview") or None
         poster_url = ctx.tmdb.poster_url(tmdb.get("poster_path")) if ctx.tmdb else None
@@ -338,6 +423,7 @@ def _merge_details(
 
     return MovieDetails(
         imdb_id=imdb_id,
+        kind=kind,
         tmdb_id=tmdb_id,
         title=title,
         original_title=original_title,
