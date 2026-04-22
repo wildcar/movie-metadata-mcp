@@ -162,6 +162,26 @@ def _to_search_result(
     # point rendering "Дюна (Дюна)" in the UI.
     original_title = original if original and original != title else None
 
+    # TMDB aggregated rating (0–10). 0.0 is used by TMDB when there are no
+    # votes yet — treat it as "unknown" so the UI can skip the rating.
+    vote = raw.get("vote_average")
+    rating = float(vote) if isinstance(vote, int | float) and vote > 0 else None
+
+    # Country resolution: TV rows carry ``origin_country`` (ISO-3166 codes);
+    # movie rows don't, so we fall back to ``original_language`` (ISO 639-1)
+    # mapped to the most common producing country. Imperfect but a good
+    # enough hint for the list view — full details have the authoritative
+    # ``production_countries``.
+    country: str | None = None
+    if kind == "series":
+        origin = raw.get("origin_country")
+        if isinstance(origin, list) and origin:
+            country = _COUNTRY_RU.get(str(origin[0]).upper())
+    else:
+        lang = raw.get("original_language")
+        if isinstance(lang, str) and lang:
+            country = _LANG_TO_COUNTRY.get(lang.lower())
+
     return MovieSearchResult(
         kind=kind,
         imdb_id=imdb_map.get(tmdb_id) if tmdb_id is not None else None,
@@ -171,7 +191,45 @@ def _to_search_result(
         year=year,
         poster_url=ctx.tmdb.poster_url(raw.get("poster_path")) if ctx.tmdb else None,
         overview=raw.get("overview") or None,
+        rating=rating,
+        country=country,
     )
+
+
+# ISO-3166 alpha-2 → Russian country name. Coverage is limited to the
+# countries that actually show up in TMDB results for films/series the bot
+# handles; anything else falls back to ``None`` (country hidden in UI).
+_COUNTRY_RU: dict[str, str] = {
+    "US": "США", "GB": "Великобритания", "RU": "Россия", "UA": "Украина",
+    "FR": "Франция", "DE": "Германия", "IT": "Италия", "ES": "Испания",
+    "JP": "Япония", "KR": "Корея", "CN": "Китай", "HK": "Гонконг",
+    "TW": "Тайвань", "IN": "Индия", "CA": "Канада", "AU": "Австралия",
+    "NZ": "Новая Зеландия", "BR": "Бразилия", "MX": "Мексика", "AR": "Аргентина",
+    "PL": "Польша", "CZ": "Чехия", "SE": "Швеция", "NO": "Норвегия",
+    "DK": "Дания", "FI": "Финляндия", "NL": "Нидерланды", "BE": "Бельгия",
+    "IE": "Ирландия", "TR": "Турция", "IL": "Израиль", "IR": "Иран",
+    "TH": "Таиланд", "PH": "Филиппины", "ID": "Индонезия", "VN": "Вьетнам",
+    "ZA": "ЮАР", "EG": "Египет", "GR": "Греция", "PT": "Португалия",
+    "CH": "Швейцария", "AT": "Австрия", "HU": "Венгрия", "RO": "Румыния",
+    "BG": "Болгария", "HR": "Хорватия", "RS": "Сербия", "BY": "Беларусь",
+    "KZ": "Казахстан", "GE": "Грузия", "AM": "Армения",
+}
+
+# ISO 639-1 language → likely producing country (Russian). Best-effort only:
+# English → США is a coin-flip vs UK/CA/AU, but 'США' is the most common
+# TMDB origin for English-language films and reads naturally in Russian.
+_LANG_TO_COUNTRY: dict[str, str] = {
+    "en": "США", "ru": "Россия", "uk": "Украина", "be": "Беларусь",
+    "fr": "Франция", "de": "Германия", "it": "Италия", "es": "Испания",
+    "ja": "Япония", "ko": "Корея", "zh": "Китай", "hi": "Индия",
+    "pt": "Бразилия", "pl": "Польша", "cs": "Чехия", "sk": "Словакия",
+    "sv": "Швеция", "no": "Норвегия", "da": "Дания", "fi": "Финляндия",
+    "nl": "Нидерланды", "tr": "Турция", "he": "Израиль", "fa": "Иран",
+    "th": "Таиланд", "vi": "Вьетнам", "id": "Индонезия", "ar": "Египет",
+    "el": "Греция", "hu": "Венгрия", "ro": "Румыния", "bg": "Болгария",
+    "hr": "Хорватия", "sr": "Сербия", "ka": "Грузия", "hy": "Армения",
+    "kk": "Казахстан",
+}
 
 
 # ---------------------------------------------------------------------------

@@ -61,6 +61,17 @@ class MovieSearchResult(_Base):
     year: int | None = Field(None, description="Release year, if known.")
     poster_url: str | None = Field(None, description="Absolute URL of a poster image.")
     overview: str | None = Field(None, description="Short plot summary (ru-RU when available).")
+    rating: float | None = Field(
+        None,
+        description="TMDB aggregated rating on a 0–10 scale; None when TMDB has no votes yet.",
+    )
+    country: str | None = Field(
+        None,
+        description=(
+            "Primary production country in Russian (e.g. 'США'). Mapped from TMDB "
+            "origin_country for TV, original_language for movies (best-effort)."
+        ),
+    )
 
 
 class SearchMovieResponse(_Base):
