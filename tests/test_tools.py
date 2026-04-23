@@ -198,6 +198,7 @@ async def test_get_movie_details_merges_all_three_sources(
     assert d is not None
     assert d.imdb_id == "tt1160419"
     assert d.tmdb_id == 438631
+    assert d.kinopoisk_id == 1318972
     assert d.title == "Dune"
     assert d.year == 2021
     assert d.runtime_minutes == 155

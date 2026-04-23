@@ -5,6 +5,21 @@ starts. Cross-repo context lives in the workspace root's `history.md`.
 
 ---
 
+## 2026-04-23
+
+### Expose КиноПоиск title id to downstream clients
+- Extend `MovieDetails` with `kinopoisk_id` so frontends can build direct
+  hyperlinks to the official КиноПоиск title page when rendering the ratings
+  line in the details card.
+- Cover the merged-details path with a test assertion that the poiskkino id
+  is preserved in the MCP response.
+
+### Align README with implemented server state
+- Update `README.md` to reflect that `movie-metadata-mcp` is no longer a
+  Step A scaffold: the tools are implemented, provider aggregation and the
+  SQLite TTL cache are live, and the architecture section should reference
+  `clients/poiskkino.py` instead of the old `kinopoisk.py` name.
+
 ## 2026-04-18
 
 ### Step B — real aggregation logic

@@ -8,9 +8,9 @@ that resolves free-text titles to an **IMDb ID** — the cross-server
 correlation key used by every downstream server (trailer, torrent search,
 download manager).
 
-> Status: **Step A — scaffolding.** The server starts, registers its tools,
-> and validates schemas, but the tool bodies return a `not_implemented`
-> error. Real aggregation logic lands in Step B.
+The server is implemented: `search_movie` resolves TMDB hits to IMDb ids,
+`get_movie_details` merges TMDB + OMDb + poiskkino.dev in parallel, and both
+tool responses are cached in SQLite with TTL.
 
 ---
 
@@ -18,7 +18,7 @@ download manager).
 
 | Tool | Input | Returns |
 |---|---|---|
-| `search_movie` | `title: str`, `year: int \| None` | `SearchMovieResponse` — list of candidates (IMDb ID, TMDB ID, title, year, poster, short overview) merged across the three providers. |
+| `search_movie` | `title: str`, `year: int \| None` | `SearchMovieResponse` — TMDB-driven candidate list enriched with IMDb IDs, poster, short overview, rating, and a country hint for the Telegram picker UI. |
 | `get_movie_details` | `imdb_id: str` | `GetMovieDetailsResponse` — poster, plot (EN + RU), ratings (IMDb / TMDB / Кинопоиск), genres, director, cast, runtime. |
 
 Both tools return structured responses with a `sources_failed` list when a
@@ -129,10 +129,12 @@ docker run --rm --env-file .env -e MCP_TRANSPORT=sse -p 8000:8000 movie-metadata
 See the cross-repo [`../techspec.md`](../techspec.md). Specific to this
 server:
 
-- Three upstream clients (`clients/tmdb.py`, `omdb.py`, `kinopoisk.py`) share
+- Three upstream clients (`clients/tmdb.py`, `omdb.py`, `poiskkino.py`) share
   no state; each owns its `httpx.AsyncClient` lifecycle.
 - `tools.py` fans out provider calls via `asyncio.gather(..., return_exceptions=True)`,
-  logs failing sources, and merges what came back.
+  logs failing sources, and merges what came back. `search_movie` uses TMDB
+  as the primary search source and resolves IMDb ids for the top candidates
+  via TMDB external-id lookups.
 - `cache.py` is a thin SQLite-backed TTL cache keyed by `(tool, args)`.
 - MCP schemas are derived from the Pydantic models in `models.py` by `FastMCP`.
 
@@ -152,8 +154,8 @@ movie-metadata-mcp/
 │   ├── tools.py         # tool implementations
 │   ├── models.py        # pydantic I/O models
 │   ├── config.py        # env-var-driven settings
-│   ├── cache.py         # SQLite TTL cache          (Step B)
-│   └── clients/         # upstream API clients      (Step B)
+│   ├── cache.py         # SQLite TTL cache
+│   └── clients/         # upstream API clients
 └── tests/
 ```
 

@@ -395,6 +395,7 @@ def _merge_details(
     original_title: str | None = None
     year: int | None = None
     runtime: int | None = None
+    kinopoisk_id: int | None = None
     genres: list[str] = []
     directors: list[str] = []
     cast: list[str] = []
@@ -463,6 +464,8 @@ def _merge_details(
 
     overview_ru: str | None = None
     if pk is not None:
+        if isinstance(pk.get("id"), int):
+            kinopoisk_id = pk["id"]
         overview_ru = pk.get("description") or pk.get("shortDescription") or None
         if not title:
             title = pk.get("name") or pk.get("alternativeName") or title
@@ -483,6 +486,7 @@ def _merge_details(
         imdb_id=imdb_id,
         kind=kind,
         tmdb_id=tmdb_id,
+        kinopoisk_id=kinopoisk_id,
         title=title,
         original_title=original_title,
         year=year,

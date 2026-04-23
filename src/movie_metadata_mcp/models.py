@@ -107,6 +107,7 @@ class MovieDetails(_Base):
     imdb_id: str = Field(..., description="IMDb identifier — cross-server correlation key.")
     kind: TitleKind = Field("movie", description="Feature film or TV series.")
     tmdb_id: int | None = None
+    kinopoisk_id: int | None = Field(None, description="Official КиноПоиск title identifier.")
     title: str
     original_title: str | None = None
     year: int | None = None
