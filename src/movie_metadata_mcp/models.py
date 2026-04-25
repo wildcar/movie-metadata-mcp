@@ -120,6 +120,14 @@ class MovieDetails(_Base):
         None, description="Russian plot summary, sourced from poiskkino.dev when available."
     )
     poster_url: str | None = None
+    number_of_seasons: int | None = Field(
+        None,
+        description=(
+            "Total seasons known to TMDB. Populated only when ``kind == 'series'`` "
+            "and TMDB has the count; ``None`` for movies and for shows TMDB hasn't "
+            "indexed yet."
+        ),
+    )
     ratings: list[Rating] = Field(default_factory=list)
 
 

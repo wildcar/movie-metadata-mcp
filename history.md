@@ -5,6 +5,20 @@ starts. Cross-repo context lives in the workspace root's `history.md`.
 
 ---
 
+## 2026-04-25
+
+### Expose `number_of_seasons` on series details
+
+- The bot needs the season count to render a season picker before
+  the rutracker search (`dl:` for series should let the user pick
+  «Сезон 1…N» rather than search the whole show blindly).
+- Add `number_of_seasons: int | None` to the `MovieDetails` model;
+  populate it from TMDB's `tv/{id}` response (`number_of_seasons`
+  field) when `kind == "series"`. Movies and series without a
+  TMDB-known season count keep `None`.
+
+---
+
 ## 2026-04-23
 
 ### Expose КиноПоиск title id to downstream clients

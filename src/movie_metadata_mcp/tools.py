@@ -401,6 +401,7 @@ def _merge_details(
     cast: list[str] = []
     overview: str | None = None
     poster_url: str | None = None
+    number_of_seasons: int | None = None
 
     if tmdb is not None:
         kind = "series" if tmdb.get("_kind") == "series" else "movie"
@@ -430,6 +431,8 @@ def _merge_details(
                 if c.get("name")
             ]
             credits_data = tmdb.get("credits") or {}
+            if isinstance(tmdb.get("number_of_seasons"), int):
+                number_of_seasons = tmdb["number_of_seasons"]
         if original_title and original_title == title:
             original_title = None
         genres = [g["name"] for g in tmdb.get("genres") or [] if g.get("name")]
@@ -497,6 +500,7 @@ def _merge_details(
         overview=overview,
         overview_ru=overview_ru,
         poster_url=poster_url,
+        number_of_seasons=number_of_seasons,
         ratings=ratings,
     )
 
