@@ -11,7 +11,15 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-TitleKind = Literal["movie", "series"]
+TitleKind = Literal["movie", "series", "cartoon"]
+"""Movie / TV series / animated movie.
+
+«cartoon» is an animation-genre overlay on top of a movie-shaped title:
+single file per release, no episode parsing — same UI flow as movies,
+just routed to a separate Cartoon/ directory on the media host. Animated
+TV (Simpsons, Rick & Morty, …) stays as ``series`` so the per-season
+picker keeps working. Detection happens in ``get_movie_details``, never
+in ``search_movie`` — until details land we don't have genre data."""
 
 # ---------------------------------------------------------------------------
 # Common

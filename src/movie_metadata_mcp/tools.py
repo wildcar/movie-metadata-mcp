@@ -118,17 +118,13 @@ async def _resolve_imdb_ids(
     if not valid_ids:
         return {}
 
-    fetch = (
-        ctx.tmdb.get_external_ids if kind == "movie" else ctx.tmdb.get_tv_external_ids
-    )
+    fetch = ctx.tmdb.get_external_ids if kind == "movie" else ctx.tmdb.get_tv_external_ids
 
     async def _one(tmdb_id: int) -> tuple[int, str | None]:
         try:
             data = await fetch(tmdb_id)
         except Exception as exc:
-            log.info(
-                "tmdb.external_ids_failed", kind=kind, tmdb_id=tmdb_id, error=str(exc)
-            )
+            log.info("tmdb.external_ids_failed", kind=kind, tmdb_id=tmdb_id, error=str(exc))
             return tmdb_id, None
         imdb = data.get("imdb_id")
         return tmdb_id, imdb if isinstance(imdb, str) and imdb else None
@@ -200,34 +196,99 @@ def _to_search_result(
 # countries that actually show up in TMDB results for films/series the bot
 # handles; anything else falls back to ``None`` (country hidden in UI).
 _COUNTRY_RU: dict[str, str] = {
-    "US": "США", "GB": "Великобритания", "RU": "Россия", "UA": "Украина",
-    "FR": "Франция", "DE": "Германия", "IT": "Италия", "ES": "Испания",
-    "JP": "Япония", "KR": "Корея", "CN": "Китай", "HK": "Гонконг",
-    "TW": "Тайвань", "IN": "Индия", "CA": "Канада", "AU": "Австралия",
-    "NZ": "Новая Зеландия", "BR": "Бразилия", "MX": "Мексика", "AR": "Аргентина",
-    "PL": "Польша", "CZ": "Чехия", "SE": "Швеция", "NO": "Норвегия",
-    "DK": "Дания", "FI": "Финляндия", "NL": "Нидерланды", "BE": "Бельгия",
-    "IE": "Ирландия", "TR": "Турция", "IL": "Израиль", "IR": "Иран",
-    "TH": "Таиланд", "PH": "Филиппины", "ID": "Индонезия", "VN": "Вьетнам",
-    "ZA": "ЮАР", "EG": "Египет", "GR": "Греция", "PT": "Португалия",
-    "CH": "Швейцария", "AT": "Австрия", "HU": "Венгрия", "RO": "Румыния",
-    "BG": "Болгария", "HR": "Хорватия", "RS": "Сербия", "BY": "Беларусь",
-    "KZ": "Казахстан", "GE": "Грузия", "AM": "Армения",
+    "US": "США",
+    "GB": "Великобритания",
+    "RU": "Россия",
+    "UA": "Украина",
+    "FR": "Франция",
+    "DE": "Германия",
+    "IT": "Италия",
+    "ES": "Испания",
+    "JP": "Япония",
+    "KR": "Корея",
+    "CN": "Китай",
+    "HK": "Гонконг",
+    "TW": "Тайвань",
+    "IN": "Индия",
+    "CA": "Канада",
+    "AU": "Австралия",
+    "NZ": "Новая Зеландия",
+    "BR": "Бразилия",
+    "MX": "Мексика",
+    "AR": "Аргентина",
+    "PL": "Польша",
+    "CZ": "Чехия",
+    "SE": "Швеция",
+    "NO": "Норвегия",
+    "DK": "Дания",
+    "FI": "Финляндия",
+    "NL": "Нидерланды",
+    "BE": "Бельгия",
+    "IE": "Ирландия",
+    "TR": "Турция",
+    "IL": "Израиль",
+    "IR": "Иран",
+    "TH": "Таиланд",
+    "PH": "Филиппины",
+    "ID": "Индонезия",
+    "VN": "Вьетнам",
+    "ZA": "ЮАР",
+    "EG": "Египет",
+    "GR": "Греция",
+    "PT": "Португалия",
+    "CH": "Швейцария",
+    "AT": "Австрия",
+    "HU": "Венгрия",
+    "RO": "Румыния",
+    "BG": "Болгария",
+    "HR": "Хорватия",
+    "RS": "Сербия",
+    "BY": "Беларусь",
+    "KZ": "Казахстан",
+    "GE": "Грузия",
+    "AM": "Армения",
 }
 
 # ISO 639-1 language → likely producing country (Russian). Best-effort only:
 # English → США is a coin-flip vs UK/CA/AU, but 'США' is the most common
 # TMDB origin for English-language films and reads naturally in Russian.
 _LANG_TO_COUNTRY: dict[str, str] = {
-    "en": "США", "ru": "Россия", "uk": "Украина", "be": "Беларусь",
-    "fr": "Франция", "de": "Германия", "it": "Италия", "es": "Испания",
-    "ja": "Япония", "ko": "Корея", "zh": "Китай", "hi": "Индия",
-    "pt": "Бразилия", "pl": "Польша", "cs": "Чехия", "sk": "Словакия",
-    "sv": "Швеция", "no": "Норвегия", "da": "Дания", "fi": "Финляндия",
-    "nl": "Нидерланды", "tr": "Турция", "he": "Израиль", "fa": "Иран",
-    "th": "Таиланд", "vi": "Вьетнам", "id": "Индонезия", "ar": "Египет",
-    "el": "Греция", "hu": "Венгрия", "ro": "Румыния", "bg": "Болгария",
-    "hr": "Хорватия", "sr": "Сербия", "ka": "Грузия", "hy": "Армения",
+    "en": "США",
+    "ru": "Россия",
+    "uk": "Украина",
+    "be": "Беларусь",
+    "fr": "Франция",
+    "de": "Германия",
+    "it": "Италия",
+    "es": "Испания",
+    "ja": "Япония",
+    "ko": "Корея",
+    "zh": "Китай",
+    "hi": "Индия",
+    "pt": "Бразилия",
+    "pl": "Польша",
+    "cs": "Чехия",
+    "sk": "Словакия",
+    "sv": "Швеция",
+    "no": "Норвегия",
+    "da": "Дания",
+    "fi": "Финляндия",
+    "nl": "Нидерланды",
+    "tr": "Турция",
+    "he": "Израиль",
+    "fa": "Иран",
+    "th": "Таиланд",
+    "vi": "Вьетнам",
+    "id": "Индонезия",
+    "ar": "Египет",
+    "el": "Греция",
+    "hu": "Венгрия",
+    "ro": "Румыния",
+    "bg": "Болгария",
+    "hr": "Хорватия",
+    "sr": "Сербия",
+    "ka": "Грузия",
+    "hy": "Армения",
     "kk": "Казахстан",
 }
 
@@ -425,11 +486,7 @@ def _merge_details(
             runtimes = tmdb.get("episode_run_time") or []
             if isinstance(runtimes, list) and runtimes and isinstance(runtimes[0], int):
                 runtime = runtimes[0]
-            directors = [
-                c.get("name", "")
-                for c in tmdb.get("created_by") or []
-                if c.get("name")
-            ]
+            directors = [c.get("name", "") for c in tmdb.get("created_by") or [] if c.get("name")]
             credits_data = tmdb.get("credits") or {}
             if isinstance(tmdb.get("number_of_seasons"), int):
                 number_of_seasons = tmdb["number_of_seasons"]
@@ -482,6 +539,12 @@ def _merge_details(
             poster = pk.get("poster")
             if isinstance(poster, dict):
                 poster_url = poster.get("url") or poster.get("previewUrl")
+
+    # Animated-movie overlay: only fires for movie-shaped titles.
+    # Animated series stay as ``series`` so the bot's per-season picker
+    # still routes them correctly.
+    if kind == "movie" and _looks_like_cartoon(genres, title, original_title):
+        kind = "cartoon"
 
     ratings = _collect_ratings(tmdb, omdb, pk)
 
@@ -564,6 +627,42 @@ def _collect_ratings(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+# Strings that mark a title as an animated movie when the structured
+# genre list isn't enough (TMDB sometimes returns no genres for older
+# Soviet-era animation; some Kinopoisk-only entries also lack them).
+# Matched case-insensitively against the title and original_title.
+_CARTOON_TITLE_TOKENS: tuple[str, ...] = (
+    "мульт",
+    "мультфильм",
+    "анимация",
+    "анимационный",
+    "cartoon",
+    "animated",
+    "animation",
+)
+
+
+def _looks_like_cartoon(genres: list[str], title: str, original_title: str | None) -> bool:
+    """Decide whether a movie-shaped title is actually an animated film.
+
+    Two signals:
+    - TMDB / poiskkino genre list contains «Animation» / «Мультфильм»
+      (the canonical TMDB genre id 16). This is the strong signal —
+      fires for nearly every animated title.
+    - Russian/English filename tokens that uploaders use when no genre
+      data is available («Иван Царевич (мульт)»). Best-effort fallback;
+      false positives here just mis-route the file into Cartoon/, which
+      is recoverable.
+    """
+    for g in genres:
+        gl = (g or "").lower()
+        if "animation" in gl or "мультфильм" in gl or "мульт" in gl:
+            return True
+
+    haystack = f"{title or ''} {original_title or ''}".lower()
+    return any(token in haystack for token in _CARTOON_TITLE_TOKENS)
 
 
 def _parse_year(date_str: Any) -> int | None:

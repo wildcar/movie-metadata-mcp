@@ -5,6 +5,31 @@ starts. Cross-repo context lives in the workspace root's `history.md`.
 
 ---
 
+## 2026-04-27
+
+### `get_movie_details` returns `kind="cartoon"` for animated movies
+
+**Why.** Bot needs to route animated *movies* into a separate Cartoon/
+directory on the media host (Plex library hint) and show a 🎨 marker
+in the chat UI. `kind` is the natural carrier — extending the literal
+keeps the change confined to metadata + a tiny client-side render
+update, no new fields.
+
+**What.**
+- `TitleKind` literal extended: `"movie" | "series" | "cartoon"`. Only
+  `get_movie_details` ever produces `cartoon`; `search_movie` keeps
+  the binary movie/series classification (no genre data at search
+  time).
+- New `_looks_like_cartoon(genres, title, original_title)` helper:
+  primary signal is a localised animation genre (TMDB id 16 →
+  «Animation» / «Мультфильм»); fallback is a Russian/English
+  filename token check (`мульт` / `cartoon` / `animation` / …) for
+  rare TMDB-genreless rows.
+- Animated *series* deliberately stay as `series` so the bot's
+  per-season picker keeps working.
+
+---
+
 ## 2026-04-25
 
 ### Expose `number_of_seasons` on series details

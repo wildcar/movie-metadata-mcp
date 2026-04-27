@@ -128,9 +128,7 @@ class TMDBClient:
             return first
         return None
 
-    async def find_any_by_imdb(
-        self, imdb_id: str
-    ) -> tuple[str, dict[str, Any]] | None:
+    async def find_any_by_imdb(self, imdb_id: str) -> tuple[str, dict[str, Any]] | None:
         """Reverse lookup across both movie and TV endpoints.
 
         Returns ``("movie" | "series", tmdb_row)`` for the first match, or
