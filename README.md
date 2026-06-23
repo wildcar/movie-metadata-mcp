@@ -126,8 +126,9 @@ docker run --rm --env-file .env -e MCP_TRANSPORT=sse -p 8000:8000 movie-metadata
 
 ## Architecture
 
-See the cross-repo [`../techspec.md`](../techspec.md). Specific to this
-server:
+See the workspace-level [`../AGENTS/SPEC.md`](../AGENTS/SPEC.md) for the
+cross-repo architecture, and this repo's [`AGENTS/SPEC.md`](AGENTS/SPEC.md) for
+the full spec. Specific to this server:
 
 - Three upstream clients (`clients/tmdb.py`, `omdb.py`, `poiskkino.py`) share
   no state; each owns its `httpx.AsyncClient` lifecycle.
@@ -146,8 +147,9 @@ movie-metadata-mcp/
 ├── uv.lock
 ├── .env.example
 ├── Dockerfile
-├── history.md
-├── env.md
+├── AGENTS.md
+├── CLAUDE.md
+├── AGENTS/
 ├── .github/workflows/ci.yml
 ├── src/movie_metadata_mcp/
 │   ├── server.py        # MCP entrypoint
