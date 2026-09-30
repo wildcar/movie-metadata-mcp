@@ -71,7 +71,7 @@ class MovieSearchResult(_Base):
     overview: str | None = Field(None, description="Short plot summary (ru-RU when available).")
     rating: float | None = Field(
         None,
-        description="TMDB aggregated rating on a 0–10 scale; None when TMDB has no votes yet.",
+        description="TMDB aggregated rating on a 0-10 scale; None when TMDB has no votes yet.",
     )
     country: str | None = Field(
         None,

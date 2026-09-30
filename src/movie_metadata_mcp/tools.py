@@ -158,7 +158,7 @@ def _to_search_result(
     # point rendering "Дюна (Дюна)" in the UI.
     original_title = original if original and original != title else None
 
-    # TMDB aggregated rating (0–10). 0.0 is used by TMDB when there are no
+    # TMDB aggregated rating (0-10). 0.0 is used by TMDB when there are no
     # votes yet — treat it as "unknown" so the UI can skip the rating.
     vote = raw.get("vote_average")
     rating = float(vote) if isinstance(vote, int | float) and vote > 0 else None
